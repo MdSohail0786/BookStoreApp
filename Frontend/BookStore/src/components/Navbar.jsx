@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Login from "./Login";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthProvider";
 
 function Navbar() {
   const { authUser, setAuthUser } = useAuth();
   console.log(authUser, setAuthUser);
-
+  const navigate = useNavigate();
   const [theme, setTheme] = useState(
     localStorage.getItem("theme") ? localStorage.getItem("theme") : "light",
   );
@@ -24,6 +26,10 @@ function Navbar() {
   }, [theme]);
 
   const [sticky, setSticky] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRef = useRef(null);
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 0) {
@@ -36,6 +42,40 @@ function Navbar() {
     return () => {
       window.removeEventListener("scroll", handleScroll);
     };
+  }, []);
+  // Search API call
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+    const delay = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await axios.get(
+          `http://localhost:4001/book?search=${searchQuery}`,
+        );
+        setSearchResults(res.data);
+      } catch (error) {
+        console.log("Search error:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+    return () => clearTimeout(delay);
+  }, [searchQuery]);
+
+  // Bahar click pe dropdown band
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        // navigate("/course");
+        setSearchResults([]);
+        setSearchQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   const navItems = (
     <>
@@ -99,10 +139,10 @@ function Navbar() {
             <div className="navbar-center hidden lg:flex">
               <ul className="menu menu-horizontal px-1">{navItems}</ul>
             </div>
-            <div className="hidden md:block ">
-              <label className="input border-0.5  rounded-xl dark:bg-slate-900 dark:text-white ">
+            <div className="hidden md:block relative" ref={searchRef}>
+              <label className="input border-0.5 rounded-xl dark:bg-slate-900 dark:text-white">
                 <svg
-                  className="h-[1rem] opacity-50 "
+                  className="h-[1rem] opacity-50"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 26 24"
                 >
@@ -117,8 +157,54 @@ function Navbar() {
                     <path d="m21 21-4.3-4.3"></path>
                   </g>
                 </svg>
-                <input type="search" className=" " placeholder="Search Books" />
+                <input
+                  type="search"
+                  placeholder="Search Books"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="outline-none bg-transparent"
+                />
               </label>
+
+              {/* Dropdown Results */}
+              {(searchResults.length > 0 || isSearching) && (
+                <div className="absolute top-12 left-0 w-72 bg-white dark:bg-slate-800 shadow-xl rounded-xl z-50 max-h-80 overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-300">
+                      Searching...
+                    </div>
+                  ) : (
+                    searchResults.map((book) => (
+                      <div
+                        key={book._id}
+                        className="flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer border-b dark:border-slate-600 last:border-0"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSearchResults([]);
+                        }}
+                      >
+                        <img
+                          src={book.image}
+                          alt={book.title}
+                          className="w-10 h-14 object-cover rounded"
+                          onError={(e) => (e.target.style.display = "none")}
+                        />
+                        <div>
+                          <p className="font-semibold text-sm dark:text-white">
+                            {book.name}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {book.category}
+                          </p>
+                          <p className="text-xs font-bold text-pink-500">
+                            ₹{book.price}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             <label className="swap swap-rotate">
