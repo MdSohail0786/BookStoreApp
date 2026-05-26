@@ -53,7 +53,7 @@ function Navbar() {
       setIsSearching(true);
       try {
         const res = await axios.get(
-          `http://localhost:4001/book?search=${searchQuery}`,
+          `https://bookstoreapp-snjb.onrender.com/book?search=${searchQuery}`,
         );
         setSearchResults(res.data);
       } catch (error) {

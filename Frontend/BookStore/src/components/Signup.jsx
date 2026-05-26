@@ -26,7 +26,7 @@ function Signup() {
     };
 
     await axios
-      .post("http://localhost:4001/user/signup", userInfo)
+      .post("https://bookstoreapp-snjb.onrender.com/user/signup", userInfo)
       .then((res) => {
         console.log(res.data);
 
